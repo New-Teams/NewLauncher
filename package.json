@@ -47,7 +47,7 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.14",
     "autoprefixer": "^10.4.21",
-    "electron": "^39.1.2",
+    "electron": "^29.1.0",
     "electron-builder": "^24.13.3",
     "eslint": "^8.57.0",
     "png-to-ico": "^3.0.1",
@@ -62,8 +62,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "RedSavant",
-        "repo": "New-Teams"
+        "owner": "New-Teams",
+        "repo": "NewLauncher"
       }
     ],
     "linux": {
