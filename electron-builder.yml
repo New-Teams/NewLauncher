@@ -1,5 +1,5 @@
 appId: "com.newsmp.launcher"
-productName: "NewSMPLauncher"
+productName: "newsmp-launcher"
 artifactName: "${productName}-setup-${version}.${ext}"
 
 copyright: ""

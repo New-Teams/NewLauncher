@@ -1,13 +1,31 @@
+// IMPORTANT : Configurer le chemin personnalisé AVANT tout autre import
+const { app } = require('electron')
+const path = require('path')
+const os = require('os')
+
+// Définir le chemin de données personnalisé
+const sysRoot = process.env.APPDATA || 
+    (process.platform === 'darwin' 
+        ? path.join(os.homedir(), 'Library', 'Application Support') 
+        : path.join(os.homedir(), '.config'))
+
+const dataPath = path.join(sysRoot, '.newsmp-launcher')
+
+// CRITIQUE : Forcer Electron à utiliser ce chemin AVANT toute initialisation
+app.setPath('userData', dataPath)
+
+console.log('[Main] Custom data path set to:', dataPath)
+
+// Maintenant on peut charger le reste
 const remoteMain = require('@electron/remote/main')
 remoteMain.initialize()
 
 // Requirements
-const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron')
+const { BrowserWindow, ipcMain, Menu, shell } = require('electron')
 const autoUpdater                       = require('electron-updater').autoUpdater
 const ejse                              = require('ejs-electron')
 const fs                                = require('fs')
 const isDev                             = require('./app/assets/js/isdev')
-const path                              = require('path')
 const semver                            = require('semver')
 const { pathToFileURL }                 = require('url')
 const { AZURE_CLIENT_ID, MSFT_OPCODE, MSFT_REPLY_TYPE, MSFT_ERROR, SHELL_OPCODE } = require('./app/assets/js/ipcconstants')
