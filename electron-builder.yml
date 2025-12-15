@@ -19,7 +19,7 @@ win:
   publisherName: "RedSavant"
   verifyUpdateCodeSignature: true
   certificateFile: "build/newsmp.pfx"
-  certificatePassword: "hidden"
+  certificatePassword: "NewSMP2025#!"
   target:
     - target: "nsis"
       arch: "x64"
