@@ -2,6 +2,7 @@ const AdmZip                = require('adm-zip')
 const child_process         = require('child_process')
 const crypto                = require('crypto')
 const fs                    = require('fs-extra')
+const { ipcRenderer }       = require('electron')
 const { LoggerUtil }        = require('helios-core')
 const { getMojangOS, isLibraryCompatible, mcVersionAtLeast }  = require('helios-core/common')
 const { Type }              = require('helios-distribution-types')
@@ -77,6 +78,14 @@ class ProcessBuilder {
 
         logger.info('Launch Arguments:', loggableArgs)
 
+        // ========================================
+        // MASQUER LE LAUNCHER AVANT LE LANCEMENT
+        // ========================================
+        logger.info('Hiding launcher before game launch...')
+        console.log('[ProcessBuilder] Sending game-launching-hide event')
+        ipcRenderer.send('game-launching-hide')
+        console.log('[ProcessBuilder] Event sent successfully')
+
         const child = child_process.spawn(ConfigManager.getJavaExecutable(this.server.rawServer.id), args, {
             cwd: this.gameDir,
             detached: ConfigManager.getLaunchDetached()
@@ -96,8 +105,17 @@ class ProcessBuilder {
         child.stderr.on('data', (data) => {
             data.trim().split('\n').forEach(x => console.log(`\x1b[31m[Minecraft]\x1b[0m ${x}`))
         })
+        
+        // ========================================
+        // RÉAFFICHER LE LAUNCHER À LA FERMETURE
+        // ========================================
         child.on('close', (code, signal) => {
             logger.info('Exited with code', code)
+            
+            // Réafficher le launcher
+            logger.info('Showing launcher after game close...')
+            ipcRenderer.send('game-closed-show')
+            
             fs.remove(tempNativePath, (err) => {
                 if(err){
                     logger.warn('Error while deleting temp dir', err)
@@ -105,6 +123,14 @@ class ProcessBuilder {
                     logger.info('Temp dir deleted successfully.')
                 }
             })
+        })
+
+        // Gestion des erreurs de lancement
+        child.on('error', (err) => {
+            logger.error('Failed to launch game process:', err)
+            
+            // Réafficher le launcher en cas d'erreur
+            ipcRenderer.send('game-closed-show')
         })
 
         return child
@@ -275,29 +301,6 @@ class ProcessBuilder {
         return modList
     }
 
-    // /**
-    //  * Construct the mod argument list for forge 1.13
-    //  * 
-    //  * @param {Array.<Object>} mods An array of mods to add to the mod list.
-    //  */
-    // constructModArguments(mods){
-    //     const argStr = mods.map(mod => {
-    //         return mod.getExtensionlessMavenIdentifier()
-    //     }).join(',')
-
-    //     if(argStr){
-    //         return [
-    //             '--fml.mavenRoots',
-    //             path.join('..', '..', 'common', 'modstore'),
-    //             '--fml.mods',
-    //             argStr
-    //         ]
-    //     } else {
-    //         return []
-    //     }
-        
-    // }
-
     /**
      * Construct the mod argument list for forge 1.13 and Fabric
      * 
@@ -372,7 +375,7 @@ class ProcessBuilder {
 
         // Java Arguments
         if(process.platform === 'darwin'){
-            args.push('-Xdock:name=HeliosLauncher')
+            args.push('-Xdock:name=NewSMP')
             args.push('-Xdock:icon=' + path.join(__dirname, '..', 'images', 'minecraft.icns'))
         }
         args.push('-Xmx' + ConfigManager.getMaxRAM(this.server.rawServer.id))
@@ -423,7 +426,7 @@ class ProcessBuilder {
 
         // Java Arguments
         if(process.platform === 'darwin'){
-            args.push('-Xdock:name=HeliosLauncher')
+            args.push('-Xdock:name=NewSMP')
             args.push('-Xdock:icon=' + path.join(__dirname, '..', 'images', 'minecraft.icns'))
         }
         args.push('-Xmx' + ConfigManager.getMaxRAM(this.server.rawServer.id))

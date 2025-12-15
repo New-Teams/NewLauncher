@@ -1,13 +1,31 @@
+// IMPORTANT : Configurer le chemin personnalisé AVANT tout autre import
+const { app } = require('electron')
+const path = require('path')
+const os = require('os')
+
+// Définir le chemin de données personnalisé
+const sysRoot = process.env.APPDATA || 
+    (process.platform === 'darwin' 
+        ? path.join(os.homedir(), 'Library', 'Application Support') 
+        : path.join(os.homedir(), '.config'))
+
+const dataPath = path.join(sysRoot, '.newsmp-launcher')
+
+// CRITIQUE : Forcer Electron à utiliser ce chemin AVANT toute initialisation
+app.setPath('userData', dataPath)
+
+console.log('[Main] Custom data path set to:', dataPath)
+
+// Maintenant on peut charger le reste
 const remoteMain = require('@electron/remote/main')
 remoteMain.initialize()
 
 // Requirements
-const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron')
+const { BrowserWindow, ipcMain, Menu, shell } = require('electron')
 const autoUpdater                       = require('electron-updater').autoUpdater
 const ejse                              = require('ejs-electron')
 const fs                                = require('fs')
 const isDev                             = require('./app/assets/js/isdev')
-const path                              = require('path')
 const semver                            = require('semver')
 const { pathToFileURL }                 = require('url')
 const { AZURE_CLIENT_ID, MSFT_OPCODE, MSFT_REPLY_TYPE, MSFT_ERROR, SHELL_OPCODE } = require('./app/assets/js/ipcconstants')
@@ -84,6 +102,7 @@ ipcMain.on('autoUpdateAction', (event, arg, data) => {
             break
     }
 })
+
 // Redirect distribution index event from preloader to renderer.
 ipcMain.on('distributionIndexDone', (event, res) => {
     event.sender.send('distributionIndexDone', res)
@@ -103,6 +122,61 @@ ipcMain.handle(SHELL_OPCODE.TRASH_ITEM, async (event, ...args) => {
         }
     }
 })
+
+// ========================================
+// GESTIONNAIRES POUR MINIMISER/RESTAURER LE LAUNCHER
+// ========================================
+
+// Gestionnaire pour minimiser le launcher au lancement du jeu
+ipcMain.on('game-launching', (event) => {
+    console.log('[Main] Received game-launching event - Minimizing launcher')
+    if (win && !win.isDestroyed()) {
+        win.minimize()
+        console.log('[Main] Launcher minimized')
+    } else {
+        console.log('[Main] ERROR: Window is destroyed or null')
+    }
+})
+
+// Gestionnaire pour restaurer le launcher à la fermeture du jeu
+ipcMain.on('game-closed', (event) => {
+    console.log('[Main] Received game-closed event - Restoring launcher')
+    if (win && !win.isDestroyed()) {
+        win.restore()
+        win.focus()
+        console.log('[Main] Launcher restored')
+    } else {
+        console.log('[Main] ERROR: Window is destroyed or null')
+    }
+})
+
+// Alternative: Gestionnaire pour masquer complètement la fenêtre
+ipcMain.on('game-launching-hide', (event) => {
+    console.log('[Main] Received game-launching-hide event - Hiding launcher')
+    if (win && !win.isDestroyed()) {
+        win.hide()
+        console.log('[Main] Launcher hidden successfully')
+    } else {
+        console.log('[Main] ERROR: Window is destroyed or null')
+    }
+})
+
+// Alternative: Gestionnaire pour afficher à nouveau la fenêtre
+ipcMain.on('game-closed-show', (event) => {
+    console.log('[Main] Received game-closed-show event - Relaunching application')
+    if (win && !win.isDestroyed()) {
+        console.log('[Main] Closing current window...')
+        win.close()
+    }
+    
+    console.log('[Main] Relaunching application...')
+    app.relaunch()
+    app.quit()
+})
+
+// ========================================
+// FIN DES GESTIONNAIRES LAUNCHER
+// ========================================
 
 // Disable hardware acceleration.
 // https://electronjs.org/docs/tutorial/offscreen-rendering
